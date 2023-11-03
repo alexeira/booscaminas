@@ -1,35 +1,167 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
 
-function App() {
-  const [count, setCount] = useState(0)
+type Matrix = (number | string)[][]
+type GameStatus = 'start' | 'playing' | 'win' | 'over'
 
-  return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+const BOMB_COUNT = 8
+const GRID_SIZE = 8
+const CELL_CONTENT = 0
+const MATRIX: Matrix = Array.from({ length: GRID_SIZE }, () =>
+  Array.from({ length: GRID_SIZE }, () => CELL_CONTENT)
+)
+
+const MATCHES = [
+  [-1, -1],
+  [-1, 0],
+  [-1, 1],
+  [0, -1],
+  [0, 1],
+  [1, -1],
+  [1, 0],
+  [1, 1]
+]
+
+// crea bombas en posiciones aleatorias a partir de bomb_count
+for (let count = 0; count < BOMB_COUNT; ) {
+  const randomRow = Math.floor(Math.random() * GRID_SIZE)
+  const randomCell = Math.floor(Math.random() * GRID_SIZE)
+
+  if (MATRIX[randomRow][randomCell] !== 'B') {
+    MATRIX[randomRow][randomCell] = 'B'
+    count++
+  }
 }
 
-export default App
+// cuenta la cantidad de bombas alrededor de una casilla
+for (let rowIndex = 0; rowIndex < MATRIX.length; rowIndex++) {
+  for (let cellIndex = 0; cellIndex < MATRIX[rowIndex].length; cellIndex++) {
+    let bombCount = 0
+
+    if (MATRIX[rowIndex][cellIndex] === 'B') continue
+
+    for (const match of MATCHES) {
+      if (MATRIX[rowIndex + match[0]]?.[cellIndex + match[1]] === 'B') {
+        bombCount++
+      }
+    }
+
+    MATRIX[rowIndex][cellIndex] = bombCount
+  }
+}
+
+export const App = () => {
+  const [clicked, setClicked] = useState<string[]>([])
+  const [gameStatus, setGameStatus] = useState<GameStatus>('start')
+
+  function openAdjacentCells(row: number, cell: number, visited: Set<string>) {
+    const queue: [number, number][] = [[row, cell]]
+
+    while (queue.length > 0) {
+      const [currentRow, currentCell] = queue.shift()!
+
+      for (const match of MATCHES) {
+        const newRow = currentRow + match[0]
+        const newCell = currentCell + match[1]
+        const cellKey = `${newRow}-${newCell}`
+
+        if (
+          visited.has(cellKey) ||
+          MATRIX[newRow]?.[newCell] === undefined ||
+          MATRIX[newRow][newCell] === 'B'
+        ) {
+          continue
+        }
+
+        visited.add(cellKey)
+        setClicked(prevClicked => prevClicked.concat(cellKey))
+
+        if (MATRIX[newRow][newCell] === 0) {
+          queue.push([newRow, newCell])
+        }
+      }
+    }
+  }
+
+  function handleClick(rowIndex: number, cellIndex: number) {
+    const cellKey = `${rowIndex}-${cellIndex}`
+
+    if (clicked.includes(cellKey)) {
+      return
+    }
+
+    if (MATRIX[rowIndex][cellIndex] === 'B') {
+      setGameStatus('over')
+    } else {
+      const visited = new Set([cellKey])
+
+      setClicked(prevClicked => prevClicked.concat(cellKey))
+
+      if (MATRIX[rowIndex][cellIndex] === 0) {
+        openAdjacentCells(rowIndex, cellIndex, visited)
+      }
+
+      if (clicked.length + 1 === GRID_SIZE ** 2 - BOMB_COUNT) {
+        setGameStatus('win')
+      }
+    }
+  }
+
+  function playAgain() {
+    window.location.reload()
+  }
+
+  return (
+    <main className="container m-auto grid min-h-screen grid-rows-[auto,1fr,auto] px-4">
+      <header className="text-xl font-bold leading-[3rem]">booscaminas 👻</header>
+      <section className="py-8">
+        {gameStatus === 'start' && (
+          <button className="border bg-green-700 p-2" onClick={() => setGameStatus('playing')}>
+            Start Game
+          </button>
+        )}
+        {gameStatus === 'playing' &&
+          MATRIX.map((row, rowIndex) => (
+            <section key={String(rowIndex)} className="grid grid-cols-9 w-fit">
+              {row.map((cell, cellIndex) => (
+                <div
+                  key={`${rowIndex}-${cellIndex}`}
+                  className={`border w-12 h-12 grid place-items-center ${
+                    clicked.includes(`${rowIndex}-${cellIndex}`) ? 'bg-white/10' : 'bg-transparent'
+                  }`}
+                >
+                  {clicked.includes(`${rowIndex}-${cellIndex}`) ? (
+                    <span>{cell === 'B' ? '🎃' : cell === 0 ? null : cell}</span>
+                  ) : (
+                    <button
+                      className="w-full h-full"
+                      type="button"
+                      onClick={() => gameStatus === 'playing' && handleClick(rowIndex, cellIndex)}
+                    />
+                  )}
+                </div>
+              ))}
+            </section>
+          ))}
+        {gameStatus === 'over' && (
+          <section>
+            <p>You lost :(</p>
+            <button className="border p-2 bg-blue-700" onClick={playAgain}>
+              Play Again
+            </button>
+          </section>
+        )}
+        {gameStatus === 'win' && (
+          <section>
+            <p>You win :)</p>
+            <button className="border p-2 bg-yellow-500" onClick={playAgain}>
+              Play Again
+            </button>
+          </section>
+        )}
+      </section>
+      <footer className="text-center leading-[3rem] opacity-70">
+        © {new Date().getFullYear()} booscaminas
+      </footer>
+    </main>
+  )
+}
