@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 type Matrix = (number | string)[][]
 type GameStatus = 'start' | 'playing' | 'win' | 'over'
@@ -6,10 +6,6 @@ type GameStatus = 'start' | 'playing' | 'win' | 'over'
 const BOMB_COUNT = 8
 const GRID_SIZE = 8
 const CELL_CONTENT = 0
-const MATRIX: Matrix = Array.from({ length: GRID_SIZE }, () =>
-  Array.from({ length: GRID_SIZE }, () => CELL_CONTENT)
-)
-
 const MATCHES = [
   [-1, -1],
   [-1, 0],
@@ -21,38 +17,55 @@ const MATCHES = [
   [1, 1]
 ]
 
-// crea bombas en posiciones aleatorias a partir de bomb_count
-for (let count = 0; count < BOMB_COUNT; ) {
-  const randomRow = Math.floor(Math.random() * GRID_SIZE)
-  const randomCell = Math.floor(Math.random() * GRID_SIZE)
-
-  if (MATRIX[randomRow][randomCell] !== 'B') {
-    MATRIX[randomRow][randomCell] = 'B'
-    count++
-  }
-}
-
-// cuenta la cantidad de bombas alrededor de una casilla
-for (let rowIndex = 0; rowIndex < MATRIX.length; rowIndex++) {
-  for (let cellIndex = 0; cellIndex < MATRIX[rowIndex].length; cellIndex++) {
-    let bombCount = 0
-
-    if (MATRIX[rowIndex][cellIndex] === 'B') continue
-
-    for (const match of MATCHES) {
-      if (MATRIX[rowIndex + match[0]]?.[cellIndex + match[1]] === 'B') {
-        bombCount++
-      }
-    }
-
-    MATRIX[rowIndex][cellIndex] = bombCount
-  }
-}
+// generar la grilla con 0s
+const MATRIX: Matrix = Array.from({ length: GRID_SIZE }, () =>
+  Array.from({ length: GRID_SIZE }, () => CELL_CONTENT)
+)
 
 export const App = () => {
   const [clicked, setClicked] = useState<string[]>([])
   const [gameStatus, setGameStatus] = useState<GameStatus>('start')
+  const firstClick = useRef(true)
 
+  // crea bombas en posiciones aleatorias a partir de bomb_count
+  function generateBombs(rowIndex: number, cellIndex: number) {
+    for (let count = 0; count < BOMB_COUNT; ) {
+      const randomRow = Math.floor(Math.random() * GRID_SIZE)
+      const randomCell = Math.floor(Math.random() * GRID_SIZE)
+      const clickedPos = MATRIX[rowIndex][cellIndex]
+
+      if (randomRow === rowIndex && randomCell === cellIndex) continue
+
+      if (MATRIX[randomRow][randomCell] !== 'B') {
+        MATRIX[randomRow][randomCell] = 'B'
+        count++
+      }
+    }
+    console.log('generated bombs')
+    console.log(MATRIX)
+  }
+
+  // cuenta la cantidad de bombas alrededor de una casilla
+  function countBombs() {
+    for (let rowIndex = 0; rowIndex < MATRIX.length; rowIndex++) {
+      for (let cellIndex = 0; cellIndex < MATRIX[rowIndex].length; cellIndex++) {
+        let bombCount = 0
+
+        if (MATRIX[rowIndex][cellIndex] === 'B') continue
+
+        for (const match of MATCHES) {
+          if (MATRIX[rowIndex + match[0]]?.[cellIndex + match[1]] === 'B') {
+            bombCount++
+          }
+        }
+
+        MATRIX[rowIndex][cellIndex] = bombCount
+      }
+    }
+    console.log('counted bombs')
+  }
+
+  // abrir celdas aledañas que esten vacias
   function openAdjacentCells(row: number, cell: number, visited: Set<string>) {
     const queue: [number, number][] = [[row, cell]]
 
@@ -80,6 +93,7 @@ export const App = () => {
         }
       }
     }
+    console.log('open cells')
   }
 
   function handleClick(rowIndex: number, cellIndex: number) {
@@ -103,6 +117,16 @@ export const App = () => {
       if (clicked.length + 1 === GRID_SIZE ** 2 - BOMB_COUNT) {
         setGameStatus('win')
       }
+    }
+  }
+
+  // genera bombas, las cuenta y luego abre las casillas aledañas
+  function initialClick(isFirstClick: boolean, rowIndex: number, cellIndex: number) {
+    if (isFirstClick) {
+      generateBombs(rowIndex, cellIndex)
+      countBombs()
+      firstClick.current = false
+      handleClick(rowIndex, cellIndex)
     }
   }
 
@@ -135,7 +159,11 @@ export const App = () => {
                     <button
                       className="w-full h-full"
                       type="button"
-                      onClick={() => gameStatus === 'playing' && handleClick(rowIndex, cellIndex)}
+                      onClick={() =>
+                        gameStatus === 'playing' && !firstClick.current
+                          ? handleClick(rowIndex, cellIndex)
+                          : initialClick(firstClick.current, rowIndex, cellIndex)
+                      }
                     />
                   )}
                 </div>
