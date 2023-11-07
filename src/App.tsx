@@ -29,20 +29,29 @@ export const App = () => {
 
   // crea bombas en posiciones aleatorias a partir de bomb_count
   function generateBombs(rowIndex: number, cellIndex: number) {
+    const cellsAround = MATCHES.reduce((avoided: string[], [row, cell]) => {
+      const newRow = row + rowIndex
+      const newCell = cell + cellIndex
+
+      if (newRow >= 0 && newRow < GRID_SIZE && newCell >= 0 && newCell < GRID_SIZE) {
+        avoided.push(`${newRow}-${newCell}`)
+      }
+
+      return avoided
+    }, [])
+
     for (let count = 0; count < BOMB_COUNT; ) {
       const randomRow = Math.floor(Math.random() * GRID_SIZE)
       const randomCell = Math.floor(Math.random() * GRID_SIZE)
-      const clickedPos = MATRIX[rowIndex][cellIndex]
+      const randomCellKey = `${randomRow}-${randomCell}`
 
       if (randomRow === rowIndex && randomCell === cellIndex) continue
 
-      if (MATRIX[randomRow][randomCell] !== 'B') {
+      if (!cellsAround.includes(randomCellKey) && MATRIX[randomRow][randomCell] !== 'B') {
         MATRIX[randomRow][randomCell] = 'B'
         count++
       }
     }
-    console.log('generated bombs')
-    console.log(MATRIX)
   }
 
   // cuenta la cantidad de bombas alrededor de una casilla
@@ -62,7 +71,6 @@ export const App = () => {
         MATRIX[rowIndex][cellIndex] = bombCount
       }
     }
-    console.log('counted bombs')
   }
 
   // abrir celdas aledañas que esten vacias
@@ -93,7 +101,6 @@ export const App = () => {
         }
       }
     }
-    console.log('open cells')
   }
 
   function handleClick(rowIndex: number, cellIndex: number) {

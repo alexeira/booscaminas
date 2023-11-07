@@ -19,8 +19,8 @@ Hoy es Halloween (o no si venís del futuro) pero las calabazas están de promoc
 - [ ] Podemos ver un contador de casillas que nos quedan por clickear.
 - [ ] Agregar un timer para ver cuánto tiempo tardamos en resolver el juego.
 - [ ] Agregar un scoreboard para ver los mejores tiempos de los jugadores.
-- [ ] Al clickear una casilla que no tiene calabazas cerca, se abren todas las casillas aledañas que tampoco tienen calabazas.
-- [ ] Hacer que el primer click no sea una bomba
+- [X] Al clickear una casilla que no tiene calabazas cerca, se abren todas las casillas aledañas que tampoco tienen calabazas.
+- [X] Hacer que el primer click no sea una bomba ni una casilla que cuente bombas.
 
 ## Ideas
 - No pierdas el tiempo: Si el usuario no clickea una casilla por un determinado tiempo, emite un sonido de susto.
